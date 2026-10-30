@@ -85,7 +85,7 @@ tr.q td{font-weight:800}tr.q td:first-child{box-shadow:inset 4px 0 var(--ball)}
 <main id="app"></main>
 <script>
 const FMT={'1x9':'1 set de 9 jeux','2x6':'2 sets gagnants à 6 jeux (7 si 6-6)'};
-const fresh=()=>({names:Array.from({length:16},(_,i)=>'Équipe '+(i+1)),d:{},v:2,fmt:{e:'1x9',l:'1x9',c:'1x9'},sc:{},sg:{},cls:'full',act:{},run:{},live:false,cfg:{av:{},qrot:4,courts:4,start:'09:00',d1:40,d2:75,mode:'opt'},tab:'bracket'});
+const fresh=()=>({names:Array.from({length:16},(_,i)=>'Équipe '+(i+1)),d:{},v:2,fmt:{e:'1x9',l:'1x9',c:'1x9'},sc:{},sg:{},cls:'full',act:{},run:{},live:false,cfg:{av:{},qrot:4,courts:4,start:'09:00',d1:45,d2:75,mode:'opt'},tab:'bracket'});
 let S=fresh(),pend=null;
 try{const r=localStorage.getItem('padel16c');if(r)S=Object.assign(fresh(),JSON.parse(r));const F=fresh();S.fmt=Object.assign(F.fmt,S.fmt);S.cfg=Object.assign(F.cfg,S.cfg);if(+S.cfg.qrot>4)S.cfg.qrot=4;if(S.v!==2){S.fmt=Object.assign({},F.fmt);S.cfg.d1=F.cfg.d1;S.v=2}if(!S.live){S.act={};S.run={}}}catch(e){}
 const save=()=>{try{localStorage.setItem('padel16c',JSON.stringify(S))}catch(e){}};
