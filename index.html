@@ -73,6 +73,7 @@ tr.q td{font-weight:800}tr.q td:first-child{box-shadow:inset 4px 0 var(--ball)}
 .avr{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.avr>span:first-child{width:80px;font-weight:600}
 .avp input{font:inherit;padding:4px 6px;border:1.5px solid var(--line);border-radius:6px;background:var(--surf);color:var(--ink)}.avp .x{border:0;background:none;color:var(--mut);cursor:pointer;font-size:1rem}
 .wt{color:var(--mut);font-size:.75rem;font-weight:400}
+.tr select{width:100%;min-width:0;font:inherit;font-size:.82rem;padding:2px 4px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}.tr>span.sl{flex:1;min-width:0;overflow:visible}.tr>span.sl::after{content:none!important}.tr.w>span.sl select{border-color:var(--ok)}.manual-note{color:var(--mut);font-size:.85rem;margin:-6px 0 12px}
 .ln{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:1px 0}
 </style>
 </head>
@@ -85,7 +86,7 @@ tr.q td{font-weight:800}tr.q td:first-child{box-shadow:inset 4px 0 var(--ball)}
 <main id="app"></main>
 <script>
 const FMT={'1x9':'1 set de 9 jeux','2x6':'2 sets gagnants à 6 jeux (7 si 6-6)'};
-const fresh=()=>({names:Array.from({length:16},(_,i)=>'Équipe '+(i+1)),d:{},v:2,fmt:{e:'1x9',l:'1x9',c:'1x9'},sc:{},sg:{},cls:'full',act:{},run:{},live:false,cfg:{av:{},qrot:4,courts:4,start:'12:00',d1:40,d2:75,mode:'opt'},tab:'bracket'});
+const fresh=()=>({names:Array.from({length:16},(_,i)=>'Équipe '+(i+1)),d:{},v:2,fmt:{e:'1x9',l:'1x9',c:'1x9'},sc:{},sg:{},cls:'full',act:{},run:{},live:false,man:false,cfg:{av:{},qrot:4,courts:4,start:'12:00',d1:40,d2:75,mode:'opt'},tab:'bracket'});
 let S=fresh(),pend=null;
 try{const r=localStorage.getItem('padel16c');if(r)S=Object.assign(fresh(),JSON.parse(r));const F=fresh();S.fmt=Object.assign(F.fmt,S.fmt);S.cfg=Object.assign(F.cfg,S.cfg);if(+S.cfg.qrot>4)S.cfg.qrot=4;if(S.v!==2){S.fmt=Object.assign({},F.fmt);S.cfg.d1=F.cfg.d1;S.v=2}if(!S.live){S.act={};S.run={}}}catch(e){}
 const save=()=>{try{localStorage.setItem('padel16c',JSON.stringify(S))}catch(e){}};
@@ -254,9 +255,9 @@ const NEXT=k=>{const i=+k[1];let w=null,l=null;
   else if(k==='c5a'||k==='c5b'){w='c5';l='c7'}
   return[w&&actv(w)?w:null,l&&actv(l)?l:null]};
 const entry=t=>{const d=S.d;if(t===0)return'q3';if(t===1)return'q0';
-  if(t<4)return'q'+((d.r3?d.r3.indexOf(t):t-2)+1);
-  if(t<8)return'b'+(d.r2?d.r2.indexOf(t):t-4);
-  return'a'+(d.r1?d.r1.findIndex(x=>x.includes(t)):(t<12?t-8:t-12))};
+  if(t<4){let i=d.r3?d.r3.indexOf(t):-1;if(i<0)i=t-2;return'q'+(i+1)}
+  if(t<8){let i=d.r2?d.r2.indexOf(t):-1;if(i<0)i=t-4;return'b'+i}
+  let i=d.r1?d.r1.findIndex(x=>x.includes(t)):-1;if(i<0)i=t<12?t-8:t-12;return'a'+i};
 function teamStats(t,mp){
   const R=[];
   (function go(k,sum,mx,n,p){
@@ -298,6 +299,26 @@ function doDraw(n){
   if(n===0||n===3)S.d.r3=shuf([2,3]);
   prune();syncLive();
 }
+const POOL={r1:[8,9,10,11,12,13,14,15],r2:[4,5,6,7],r3:[2,3]},RN={r1:1,r2:2,r3:3};
+const flat=r=>r==='r1'?S.d.r1.flat():S.d[r];
+function ensureD(){const d=S.d;if(!d.r1)d.r1=[0,1,2,3].map(()=>[null,null]);if(!d.r2)d.r2=[null,null,null,null];if(!d.r3)d.r3=[null,null]}
+function applyPick(r,p,v){
+  ensureD();const a=[...flat(r)],o=v==null?-1:a.indexOf(v);
+  if(o>=0&&o!==p)a[o]=a[p];
+  a[p]=v;
+  S.d[r]=r==='r1'?[[a[0],a[1]],[a[2],a[3]],[a[4],a[5]],[a[6],a[7]]]:a;
+  prune();syncLive();
+}
+function clearD(){S.d={};prune();syncLive()}
+const slotOf=(key,t)=>{if(!S.man)return null;const i=+key[1];
+  if(key[0]==='a')return{r:'r1',p:i*2+t};
+  if(key[0]==='b'&&t===0)return{r:'r2',p:i};
+  if(key[0]==='q'&&(i===1||i===2)&&t===0)return{r:'r3',p:i-1};
+  return null};
+const pickSel=(sl,id)=>{
+  const placed=S.d[sl.r]?flat(sl.r):[];
+  return `<select data-pick="${sl.r}:${sl.p}" aria-label="Choisir l'équipe"><option value="">— choisir —</option>${POOL[sl.r].map(t=>`<option value="${t}" ${t===id?'selected':''}>${placed.includes(t)&&t!==id?'↔ ':''}#${t+1} ${esc(S.names[t])}</option>`).join('')}</select>`;
+};
 function ask(n){
   const from=n||1,exists=n===0?S.d.r1:S.d['r'+n];
   if(exists&&hasScores(from)){pend={t:'draw',n};render()}else{doDraw(n);render()}
@@ -314,7 +335,7 @@ function LAB(k){
 }
 function card(key,title){
   const[a,b]=tm(key),r=res(key),l=LAB(key),sets=fOf(key)==='1x9'?1:3,raw=S.sc[key]||[];
-  const row=(id,lab,t)=>`<div class="tr ${id==null?'ph':''} ${r.w===t?'w':''}">${id==null?`<span>${lab}</span>`:N(id)}<span class="sct">${[...Array(sets).keys()].map(q=>(raw[q]||[])[t]).filter(v=>v!==''&&v!=null).join(' · ')}</span></div>`;
+  const row=(id,lab,t)=>{const sl=slotOf(key,t);return `<div class="tr ${id==null&&!sl?'ph':''} ${r.w===t?'w':''}">${sl?`<span class="sl">${pickSel(sl,id)}</span>`:id==null?`<span>${lab}</span>`:N(id)}<span class="sct">${[...Array(sets).keys()].map(q=>(raw[q]||[])[t]).filter(v=>v!==''&&v!=null).join(' · ')}</span></div>`};
   return `<div class="mt"><div class="mtt">${title}</div>${row(a,l[0],0)}${row(b,l[1],1)}</div>`;
 }
 function cell(key,col,row,span,title,x){
@@ -328,8 +349,8 @@ function vTeams(){
 }
 function vBracket(){
   let h='';
-  if(pend)h+=`<div class="bar warn">${pend.t==='reset'?'Tout effacer (équipes, tirages, scores) ?':'Refaire ce tirage efface les scores des tours concernés.'} <button class="btn p" data-ok="1">Confirmer</button><button class="btn" data-no="1">Annuler</button></div>`;
-  h+=`<div class="bar"><button class="btn p" data-draw="0">Tirage complet</button><button class="btn" data-draw="1">Tirage tour 1</button><button class="btn" data-draw="2">Tirage tour 2</button><button class="btn" data-draw="3">Tirage 3 et 4</button></div>
+  if(pend)h+=`<div class="bar warn">${pend.t==='reset'?'Tout effacer (équipes, tirages, scores) ?':pend.t==='draw'?'Refaire ce tirage efface les scores des tours concernés.':'Ce changement efface les scores des matchs concernés.'} <button class="btn p" data-ok="1">Confirmer</button><button class="btn" data-no="1">Annuler</button></div>`;
+  h+=`<div class="bar"><button class="btn p" data-draw="0">Tirage complet</button><button class="btn" data-draw="1">Tirage tour 1</button><button class="btn" data-draw="2">Tirage tour 2</button><button class="btn" data-draw="3">Tirage 3 et 4</button><button class="btn ${S.man?'p':''}" data-man="1" aria-pressed="${!!S.man}">✋ Mode manuel : ${S.man?'activé':'désactivé'}</button>${S.man?'<button class="btn" data-clear="1">Vider les placements</button>':''}</div>${S.man?'<p class="manual-note">Choisissez chaque équipe dans les menus de l’arbre : tour 1 → équipes #9 à #16 (n’importe quel match), tour 2 → #5 à #8, quarts → #3 et #4 (#1 et #2 restent fixes). Choisir une équipe déjà placée (↔) l’échange avec l’équipe actuelle. Le tirage au sort reste utilisable pour pré-remplir, puis ajustez à la main.</p>':''}
   <div class="bar">${fmtSel('e','Tours 1 et 2 :')}${fmtSel('l','Quarts, demies, finale :')}${fmtSel('c','Classement :')}<label>Matchs de classement : <select data-cls="1">${[['full','Complet (places 1 à 16)'],['third','3e place seulement'],['none','Aucun']].map(([v,t])=>`<option value="${v}" ${S.cls===v?'selected':''}>${t}</option>`).join('')}</select></label></div><div id="fitw"><div class="tree" id="fitt">`;
   ['Tour 1','Tour 2','Quarts','Demies','Finale'].forEach((t,c)=>h+=`<h3 style="grid-column:${c+1}">${t}</h3>`);
   for(let i=0;i<4;i++){
@@ -418,16 +439,19 @@ document.addEventListener('click',e=>{
   if(d.tab){S.tab=d.tab;pend=null;render()}
   else if(d.draw!=null)ask(+d.draw);
   else if(d.reset){pend={t:'reset'};S.tab='bracket';render()}
+  else if(d.man){S.man=!S.man;render()}
+  else if(d.clear){if(hasScores(1))pend={t:'clear'};else clearD();render()}
   else if(d.avadd!=null){S.cfg.av=S.cfg.av||{};(S.cfg.av[d.avadd]=S.cfg.av[d.avadd]||[]).push({a:S.cfg.start,b:'20:00'});render()}
   else if(d.avdel){const[c,j]=d.avdel.split(':');S.cfg.av[c].splice(+j,1);render()}
   else if(d.avall){const A=S.cfg.av||{},C=+S.cfg.courts||1;for(let c=1;c<C;c++)A[c]=(A[0]||[]).map(w=>({...w}));S.cfg.av=A;render()}
   else if(d.live!=null){if(d.live==='1'){S.live=true;S.cfg.start=clockNow();S.act={};S.run={};syncLive()}else{S.live=false;S.act={};S.run={}}render()}
   else if(d.no){pend=null;render()}
-  else if(d.ok){if(pend.t==='reset')S=fresh();else doDraw(pend.n);pend=null;render()}
+  else if(d.ok){if(pend.t==='reset')S=fresh();else if(pend.t==='pick')applyPick(pend.r,pend.p,pend.v);else if(pend.t==='clear')clearD();else doDraw(pend.n);pend=null;render()}
 });
 document.addEventListener('change',e=>{
   const x=e.target;
   if(x.dataset.name!=null){S.names[+x.dataset.name]=x.value.trim()||'Équipe '+(+x.dataset.name+1);render()}
+  else if(x.dataset.pick){const[r,p]=x.dataset.pick.split(':'),v=x.value===''?null:+x.value;if(hasScores(RN[r]))pend={t:'pick',r,p:+p,v};else applyPick(r,+p,v);render()}
   else if(x.dataset.fmt){S.fmt[x.dataset.fmt]=x.value;render()}
   else if(x.dataset.av){const[c,j,f]=x.dataset.av.split(':');S.cfg.av[c][j][f]=r30(x.value);render()}
   else if(x.dataset.cls){S.cls=x.value;render()}
